@@ -151,29 +151,6 @@ fun CommitItem(
 
 
     ) {
-        Row (
-            verticalAlignment = Alignment.CenterVertically,
-
-        ){
-            InLineIcon(
-                icon = Icons.Filled.Commit,
-                tooltipText = stringResource(R.string.commit)
-            )
-
-//            Text(text = stringResource(R.string.hash) +": ")
-
-            Text(text = commitDto.shortOidStr,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = defaultFontWeight
-
-            )
-
-            InLineCopyIcon {
-                clipboardManager.setText(AnnotatedString(commitDto.oidStr))
-                Msg.requireShow(activityContext.getString(R.string.copied))
-            }
-        }
 //        Row (
 //            verticalAlignment = Alignment.CenterVertically,
 //
@@ -189,6 +166,24 @@ fun CommitItem(
 //        }
         Row (
             verticalAlignment = Alignment.CenterVertically,
+        ){
+
+            InLineIcon(
+                icon = Icons.AutoMirrored.Filled.Message,
+                tooltipText = stringResource(R.string.msg)
+            )
+
+//            Text(text = stringResource(R.string.msg) +": ")
+
+            SingleLineClickableText(commitDto.getCachedOneLineMsg()) {
+                lastClickedItemKey.value = commitDto.oidStr
+
+                updateCurObjState()
+                showItemDetails(commitDto)
+            }
+        }
+        Row (
+            verticalAlignment = Alignment.CenterVertically,
 
         ){
 
@@ -198,11 +193,16 @@ fun CommitItem(
             )
 
 //            Text(text = stringResource(R.string.author) +": ")
-
-            Text(text = Libgit2Helper.getFormattedUsernameAndEmail(commitDto.author, commitDto.email),
+            Text(text = commitDto.author,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = defaultFontWeight
+            )
+            Text(text = " " + commitDto.email,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = defaultFontWeight,
+                color = Color.Gray
 
             )
         }
@@ -220,11 +220,16 @@ fun CommitItem(
 
 //                Text(text = stringResource(R.string.committer) +": ")
 
-                Text(text = Libgit2Helper.getFormattedUsernameAndEmail(commitDto.committerUsername, commitDto.committerEmail),
+                Text(text = commitDto.committerUsername,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = defaultFontWeight
-
+                )
+                Text(text = " " + commitDto.committerEmail,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = defaultFontWeight,
+                    color = Color.Gray
                 )
             }
         }
@@ -244,26 +249,31 @@ fun CommitItem(
             Text(text = if(shouldShowTimeZoneInfo) TimeZoneUtil.appendUtcTimeZoneText(commitDto.dateTime, commitDto.originTimeOffsetInMinutes) else commitDto.dateTime,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                fontWeight = defaultFontWeight
-
+                fontWeight = defaultFontWeight,
+                color = Color.Gray
             )
         }
         Row (
             verticalAlignment = Alignment.CenterVertically,
-        ){
 
+            ){
             InLineIcon(
-                icon = Icons.AutoMirrored.Filled.Message,
-                tooltipText = stringResource(R.string.msg)
+                icon = Icons.Filled.Commit,
+                tooltipText = stringResource(R.string.commit)
             )
 
-//            Text(text = stringResource(R.string.msg) +": ")
+//            Text(text = stringResource(R.string.hash) +": ")
 
-            SingleLineClickableText(commitDto.getCachedOneLineMsg()) {
-                lastClickedItemKey.value = commitDto.oidStr
+            Text(text = commitDto.shortOidStr,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = defaultFontWeight
 
-                updateCurObjState()
-                showItemDetails(commitDto)
+            )
+
+            InLineCopyIcon {
+                clipboardManager.setText(AnnotatedString(commitDto.oidStr))
+                Msg.requireShow(activityContext.getString(R.string.copied))
             }
         }
         if(commitDto.branchShortNameList.isNotEmpty()) {
@@ -303,29 +313,6 @@ fun CommitItem(
 //                Text(text = (if(commitDto.tagShortNameList.size > 1) stringResource(R.string.tags) else stringResource(R.string.tag)) +": ")
 
                 Text(text = commitDto.cachedTagShortNameList(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    fontWeight = defaultFontWeight
-
-                )
-            }
-
-        }
-
-        if(commitDto.parentShortOidStrList.isNotEmpty()) {
-            Row (
-                verticalAlignment = Alignment.CenterVertically,
-
-            ){
-
-                InLineIcon(
-                    icon = Icons.Filled.AccountTree,
-                    tooltipText = (if(commitDto.parentShortOidStrList.size > 1) stringResource(R.string.parents) else stringResource(R.string.parent))
-                )
-
-//                Text(text = (if(commitDto.parentShortOidStrList.size > 1) stringResource(R.string.parents) else stringResource(R.string.parent)) +": ")
-
-                Text(text = commitDto.cachedParentShortOidStrList(),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = defaultFontWeight
