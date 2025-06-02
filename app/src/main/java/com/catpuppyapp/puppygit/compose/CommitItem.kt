@@ -203,7 +203,6 @@ fun CommitItem(
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = defaultFontWeight,
                 color = Color.Gray
-
             )
         }
 
@@ -268,7 +267,6 @@ fun CommitItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = defaultFontWeight
-
             )
 
             InLineCopyIcon {
@@ -293,7 +291,6 @@ fun CommitItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = defaultFontWeight
-
                 )
             }
 
@@ -316,7 +313,6 @@ fun CommitItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = defaultFontWeight
-
                 )
             }
 

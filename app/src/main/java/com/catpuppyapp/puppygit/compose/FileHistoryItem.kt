@@ -22,6 +22,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -123,58 +124,6 @@ fun FileHistoryItem(
 
 
     ) {
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-
-        ) {
-
-            InLineIcon(
-                icon = Icons.Filled.Commit,
-                tooltipText = stringResource(R.string.commit_id)
-            )
-
-//            Text(text = stringResource(R.string.commit_id) + ": ")
-
-            Text(
-                text = dto.getCachedCommitShortOidStr(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = defaultFontWeight
-
-            )
-
-            InLineCopyIcon {
-                clipboardManager.setText(AnnotatedString(dto.commitOidStr))
-                Msg.requireShow(activityContext.getString(R.string.copied))
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-
-        ) {
-
-            InLineIcon(
-                icon = Icons.AutoMirrored.Filled.InsertDriveFile,
-                tooltipText = stringResource(R.string.entry_id)
-            )
-
-//            Text(text = stringResource(R.string.entry_id) + ": ")
-
-            Text(
-                text = dto.getCachedTreeEntryShortOidStr(),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                fontWeight = defaultFontWeight
-
-            )
-
-            InLineCopyIcon {
-                clipboardManager.setText(AnnotatedString(dto.treeEntryOidStr))
-                Msg.requireShow(activityContext.getString(R.string.copied))
-            }
-        }
 //        Row (
 //            verticalAlignment = Alignment.CenterVertically,
 //
@@ -190,6 +139,24 @@ fun FileHistoryItem(
 //        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
+        ) {
+
+            InLineIcon(
+                icon = Icons.AutoMirrored.Filled.Message,
+                tooltipText = stringResource(R.string.msg)
+            )
+
+//            Text(text = stringResource(R.string.msg) + ": ")
+
+            SingleLineClickableText(dto.getCachedOneLineMsg()) {
+                lastClickedItemKey.value = dto.getItemKey()
+
+                updateCurObjState()
+                showItemDetails(dto)
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
 
         ) {
 
@@ -199,13 +166,16 @@ fun FileHistoryItem(
             )
 
 //            Text(text = stringResource(R.string.author) + ": ")
-
-            Text(
-                text = Libgit2Helper.getFormattedUsernameAndEmail(dto.authorUsername, dto.authorEmail),
+            Text(text = dto.authorUsername,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = defaultFontWeight
-
+            )
+            Text(text = " " + dto.authorEmail,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = defaultFontWeight,
+                color = Color.Gray
             )
         }
 
@@ -222,12 +192,16 @@ fun FileHistoryItem(
 
 //                Text(text = stringResource(R.string.committer) + ": ")
 
-                Text(
-                    text = Libgit2Helper.getFormattedUsernameAndEmail(dto.committerUsername, dto.committerEmail),
+                Text(text = dto.committerUsername,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = defaultFontWeight
-
+                )
+                Text(text = " " + dto.committerEmail,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontWeight = defaultFontWeight,
+                    color = Color.Gray
                 )
             }
         }
@@ -248,9 +222,58 @@ fun FileHistoryItem(
                 text = if(shouldShowTimeZoneInfo) TimeZoneUtil.appendUtcTimeZoneText(dto.dateTime, dto.originTimeOffsetInMinutes) else dto.dateTime,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                fontWeight = defaultFontWeight
-
+                fontWeight = defaultFontWeight,
+                color = Color.Gray
             )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+
+            ) {
+
+            InLineIcon(
+                icon = Icons.Filled.Commit,
+                tooltipText = stringResource(R.string.commit_id)
+            )
+
+//            Text(text = stringResource(R.string.commit_id) + ": ")
+
+            Text(
+                text = dto.getCachedCommitShortOidStr(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = defaultFontWeight
+            )
+
+            InLineCopyIcon {
+                clipboardManager.setText(AnnotatedString(dto.commitOidStr))
+                Msg.requireShow(activityContext.getString(R.string.copied))
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+
+            ) {
+
+            InLineIcon(
+                icon = Icons.AutoMirrored.Filled.InsertDriveFile,
+                tooltipText = stringResource(R.string.entry_id)
+            )
+
+//            Text(text = stringResource(R.string.entry_id) + ": ")
+
+            Text(
+                text = dto.getCachedTreeEntryShortOidStr(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = defaultFontWeight
+            )
+
+            InLineCopyIcon {
+                clipboardManager.setText(AnnotatedString(dto.treeEntryOidStr))
+                Msg.requireShow(activityContext.getString(R.string.copied))
+            }
         }
 
         Row(
@@ -268,26 +291,6 @@ fun FileHistoryItem(
 
             SingleLineClickableText(dto.cachedShortCommitListStr()) {
                 showCommits(dto)
-            }
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-
-            InLineIcon(
-                icon = Icons.AutoMirrored.Filled.Message,
-                tooltipText = stringResource(R.string.msg)
-            )
-
-
-//            Text(text = stringResource(R.string.msg) + ": ")
-
-            SingleLineClickableText(dto.getCachedOneLineMsg()) {
-                lastClickedItemKey.value = dto.getItemKey()
-
-                updateCurObjState()
-                showItemDetails(dto)
             }
         }
     }
