@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.DoneAll
@@ -63,6 +64,7 @@ import com.catpuppyapp.puppygit.compose.ChangeListItem
 import com.catpuppyapp.puppygit.compose.ClickableText
 import com.catpuppyapp.puppygit.compose.ConfirmDialog
 import com.catpuppyapp.puppygit.compose.ConfirmDialog2
+import com.catpuppyapp.puppygit.compose.CopyScrollableColumn
 import com.catpuppyapp.puppygit.compose.CreatePatchSuccessDialog
 import com.catpuppyapp.puppygit.compose.CredentialSelector
 import com.catpuppyapp.puppygit.compose.DefaultPaddingText
@@ -81,6 +83,7 @@ import com.catpuppyapp.puppygit.compose.RequireCommitMsgDialog
 import com.catpuppyapp.puppygit.compose.ScrollableColumn
 import com.catpuppyapp.puppygit.compose.SelectedItemDialog
 import com.catpuppyapp.puppygit.compose.SetUpstreamDialog
+import com.catpuppyapp.puppygit.compose.SingleSelection
 import com.catpuppyapp.puppygit.constants.Cons
 import com.catpuppyapp.puppygit.constants.PageRequest
 import com.catpuppyapp.puppygit.data.AppContainer
@@ -1661,30 +1664,36 @@ fun ChangeListInnerPage(
             title = stringResource(R.string.cherrypick),
             requireShowTextCompose = true,
             textCompose = {
-                Column{
-                    Text(text =  buildAnnotatedString {
-                        append(stringResource(R.string.target)+": ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                            append(shortTarget)
-                        }
-                    },
+                CopyScrollableColumn {
+                    Text(
+                        text =  buildAnnotatedString {
+                            append(stringResource(R.string.target)+": ")
+                            withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                append(shortTarget)
+                            }
+                        },
                         modifier = Modifier.padding(horizontal = MyStyleKt.defaultHorizontalPadding)
                     )
-                    Text(text =  buildAnnotatedString {
-                        append(stringResource(R.string.parent)+": ")
-                        withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                            append(shortParent)
-                        }
-                    },
+                    Text(
+                        text =  buildAnnotatedString {
+                            append(stringResource(R.string.parent)+": ")
+                            withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                append(shortParent)
+                            }
+                        },
                         modifier = Modifier.padding(horizontal = MyStyleKt.defaultHorizontalPadding)
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(text = stringResource(R.string.will_cherrypick_changes_of_selected_files_are_you_sure),
+                    Text(
+                        text = stringResource(R.string.will_cherrypick_changes_of_selected_files_are_you_sure),
                         modifier = Modifier.padding(horizontal = MyStyleKt.defaultHorizontalPadding)
                     )
+
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    MyCheckBox(text = stringResource(R.string.auto_commit), value = cherrypickAutoCommit)
+                    DisableSelection {
+                        MyCheckBox(text = stringResource(R.string.auto_commit), value = cherrypickAutoCommit)
+                    }
                 }
             },
             onCancel = { showCherrypickDialog.value = false }
@@ -1788,7 +1797,9 @@ fun ChangeListInnerPage(
             requireShowTextCompose = true,
             textCompose = {
                 ScrollableColumn {
-                    Text(text = stringResource(R.string.will_create_patch_for_selected_files_are_you_sure))
+                    MySelectionContainer {
+                        Text(text = stringResource(R.string.will_create_patch_for_selected_files_are_you_sure))
+                    }
                 }
             },
             onCancel = { showCreatePatchDialog.value = false }
@@ -1799,11 +1810,14 @@ fun ChangeListInnerPage(
 
             doJobThenOffLoading(loadingOn,loadingOff, activityContext.getString(R.string.creating_patch)) job@{
                 try {
+                    val left = getCommitLeft()
+                    val right = getCommitRight()
+
                     val savePatchRet = ChangeListFunctions.createPath(
                         curRepo = curRepo,
-                        leftCommit = getCommitLeft(),
-                        rightCommit = getCommitRight(),
-                        fromTo = fromTo,
+                        leftCommit = left,
+                        rightCommit = right,
+                        fromTo = if(left == Cons.git_IndexCommitHash && right == Cons.git_LocalWorktreeCommitHash) Cons.gitDiffFromIndexToWorktree else fromTo,
                         relativePaths = selectedItemList.value.map { it.relativePathUnderRepo }
                     );
 
@@ -1830,45 +1844,81 @@ fun ChangeListInnerPage(
 
 
 
-    val checkoutForce = rememberSaveable { mutableStateOf(false)}
-    val showCheckoutFilesDialog = rememberSaveable { mutableStateOf(false)}
-    val checkoutTargetHash = rememberSaveable { mutableStateOf("")}
-
+    val checkoutForce = rememberSaveable { mutableStateOf(false) }
+    val showCheckoutFilesDialog = rememberSaveable { mutableStateOf(false) }
+    val checkoutTarget = rememberSaveable { mutableStateOf("") }
+    val checkoutList = mutableCustomStateListOf(stateKeyTag, "checkoutList") { listOf<String>() }
+    val leftFullHash = rememberSaveable { mutableStateOf("") }
+    val rightFullHash = rememberSaveable { mutableStateOf("") }
     val initCheckoutDialog = { curRepo:RepoEntity, targetHash:String ->
-        doJobThenOffLoading job@{
-            Repository.open(curRepo.fullSavePath).use { repo ->
-                val ret = Libgit2Helper.resolveCommitByHashOrRef(repo, targetHash)
-                if (ret.hasError() || ret.data == null) {
-                    Msg.requireShowLongDuration(ret.msg)
-                    return@job
-                }
+        val left = getCommitLeft()
+        val right = getCommitRight()
 
-                checkoutTargetHash.value = ret.data!!.id().toString()
-                checkoutForce.value = false
-                showCheckoutFilesDialog.value = true
+        try {
+            leftFullHash.value = ""
+            rightFullHash.value = ""
+
+            Repository.open(curRepo.fullSavePath).use { repo->
+                val (left, right) = Libgit2Helper.getLeftRightCommitDto(repo, left, right, repoId, settings)
+                leftFullHash.value = left.oidStr
+                rightFullHash.value = right.oidStr
             }
+        }catch (e: Exception) {
+            MyLog.d(TAG, "resolve left and right to commit hash err: ${e.stackTraceToString()}")
         }
 
+        checkoutList.value.apply {
+            clear()
+            add(left)
+            add(right)
+        }
+
+        // 没选过则选中第一个，否则保持不变
+        if(checkoutTarget.value != left && checkoutTarget.value != right) {
+            checkoutTarget.value = left
+        }
+
+        checkoutForce.value = false
+        showCheckoutFilesDialog.value = true
     }
 
     if(showCheckoutFilesDialog.value) {
-        ConfirmDialog(
+        ConfirmDialog2(
             title = stringResource(R.string.checkout),
             requireShowTextCompose = true,
             textCompose = {
-                Column{
-                    Text(text =  buildAnnotatedString {
-                            append(stringResource(R.string.target)+": ")
-                            withStyle(style = SpanStyle(fontWeight = FontWeight.ExtraBold)) {
-                                append(Libgit2Helper.getShortOidStrByFull(checkoutTargetHash.value))
-                            }
+                Column {
+//                    PaddingText(stringResource(R.string.target)+":", fontWeight = FontWeight.ExtraBold)
+                    SingleSelection(
+                        itemList = checkoutList.value,
+                        selected = {idx, item -> item == checkoutTarget.value},
+                        text = {idx, item ->
+                            val isLeft = idx == 0;
+
+                            val shortHash = Libgit2Helper.getShortOidStrByFullIfIsHash(item)
+
+                            val shortLeft = Libgit2Helper.getShortOidStrByFullIfIsHash(leftFullHash.value)
+                            val shortRight = Libgit2Helper.getShortOidStrByFullIfIsHash(rightFullHash.value)
+
+                            // 如果当前显示的不是hash，append hash
+                            activityContext.getString(if(isLeft) R.string.left else R.string.right) + ": " + shortHash + (
+                                    if(isLeft && shortHash != shortLeft) {
+                                        " ($shortLeft)"
+                                    }else if(isLeft.not() && shortHash != shortRight) {
+                                        " ($shortRight)"
+                                    }else {
+                                        ""
+                                    }
+                            )
                         },
-                        modifier = Modifier.padding(horizontal = MyStyleKt.defaultHorizontalPadding)
-                        )
+                        onClick = {idx, item -> checkoutTarget.value = item}
+                    )
+
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(text = stringResource(R.string.will_checkout_selected_files_are_you_sure),
-                        modifier = Modifier.padding(horizontal = MyStyleKt.defaultHorizontalPadding)
-                        )
+
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     MyCheckBox(text = stringResource(R.string.force), value = checkoutForce)
                     if(checkoutForce.value) {
                         DefaultPaddingText(
@@ -1880,21 +1930,51 @@ fun ChangeListInnerPage(
             },
             okTextColor = if(checkoutForce.value) MyStyleKt.TextColor.danger() else Color.Unspecified,
             onCancel = { showCheckoutFilesDialog.value = false }
-        ) {
+        ) onOk@{
             showCheckoutFilesDialog.value = false
+
+            // if target is local, no need checkout
+            if(checkoutTarget.value == Cons.git_LocalWorktreeCommitHash) {
+                Msg.requireShowLongDuration(activityContext.getString(R.string.already_up_to_date))
+                return@onOk
+            }
+
+
             val curRepo = curRepoFromParentPage.value
             val selectedItemList = selectedItemList.value.toList()
+            val targetHash = checkoutTarget.value
+            val checkoutForce = checkoutForce.value
+
+
 
             doJobThenOffLoading(loadingOn, loadingOff, activityContext.getString(R.string.checking_out)) {
-                doActWithLock(curRepo) {
+                doActWithLock(curRepo) job@{
                     val pathSpecs = selectedItemList.map{it.relativePathUnderRepo}
                     Repository.open(curRepo.fullSavePath).use { repo->
-                        val ret = Libgit2Helper.checkoutFiles(repo, checkoutTargetHash.value, pathSpecs, force=checkoutForce.value)
+                        val checkoutTargetHash = if(targetHash == Cons.git_IndexCommitHash) {  // if checkout index, no need resolve it to hash
+                            targetHash
+                        }else {
+                            val commitRet = Libgit2Helper.resolveCommitByHashOrRef(repo, targetHash)
+                            if (commitRet.hasError() || commitRet.data == null) {
+                                Msg.requireShowLongDuration(commitRet.msg)
+                                return@job
+                            }
+
+                            commitRet.data!!.id().toString()
+                        }
+
+                        val ret = Libgit2Helper.checkoutFiles(repo, checkoutTargetHash, pathSpecs, force=checkoutForce)
+
                         if(ret.hasError()) {
                             Msg.requireShowLongDuration(ret.msg)
                             createAndInsertError(repoId, "checkout files err: "+ret.msg)
                         }else {
                             Msg.requireShow(activityContext.getString(R.string.success))
+                        }
+
+                        // 如果checkout目标包含local，列表可能变化，需要刷新下列表
+                        if(checkoutList.value.contains(Cons.git_LocalWorktreeCommitHash)) {
+                            changeListRequireRefreshFromParentPage(curRepo)
                         }
                     }
                 }
@@ -2062,14 +2142,19 @@ fun ChangeListInnerPage(
             requireShowTextCompose = true,
             textCompose = {
                 ScrollableColumn {
-                    DefaultPaddingText(stringResource(R.string.will_try_import_selected_dirs_as_repos))
+                    MySelectionContainer {
+                        DefaultPaddingText(stringResource(R.string.will_try_import_selected_dirs_as_repos))
+                    }
+
                     Spacer(Modifier.height(15.dp))
 
 //                    Text(stringResource(R.string.will_import_selected_submodules_to_repos))
                     CredentialSelector(credentialList.value.toList(), selectedCredentialIdx)
 
                     Spacer(Modifier.height(10.dp))
-                    DefaultPaddingText(stringResource(R.string.import_repos_link_credential_note))
+                    MySelectionContainer {
+                        DefaultPaddingText(stringResource(R.string.import_repos_link_credential_note))
+                    }
                 }
             },
             onCancel = { showImportToReposDialog.value = false },

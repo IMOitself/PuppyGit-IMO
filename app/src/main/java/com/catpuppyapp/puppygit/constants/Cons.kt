@@ -62,8 +62,10 @@ object Cons {
 
     const val git_AllZeroOidStr = "0000000000000000000000000000000000000000"  //40个0
     val git_AllZeroOid: Oid = Oid.of(git_AllZeroOidStr)  //40个0
-    const val git_LocalWorktreeCommitHash = "local"  //代表worktree
-    const val git_IndexCommitHash = "index"  //代表index
+
+    // special commit hash, 'LOCAL' and 'INDEX' preserved by PuppyGit , 'HEAD' preserved by Git, don't name your branch/tag to these
+    const val git_LocalWorktreeCommitHash = "LOCAL"  //代表worktree
+    const val git_IndexCommitHash = "INDEX"  //代表index
     const val git_HeadCommitHash = "HEAD"  //代表HEAD
 
     const val git_DotGitModules = ".gitmodules"
@@ -225,6 +227,7 @@ object Cons {
     const val gitGlobMatchAllSign="*"
     const val gitDetachedHeadPrefix = "(Detached HEAD):"
     const val gitDetachedHead = "Detached HEAD"
+    const val gitDetachHeadStr = "Detach HEAD"
     const val gitHeadStr = "HEAD"
     const val gitDefaultRemoteOrigin="origin"
     // git ref example: "refs/remotes/origin/branch"，其中 origin和branch是可变的，前面的部分基本固定不变
