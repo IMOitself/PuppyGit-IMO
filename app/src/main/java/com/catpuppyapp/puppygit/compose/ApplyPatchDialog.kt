@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.catpuppyapp.puppygit.data.entity.RepoEntity
 import com.catpuppyapp.puppygit.play.pro.R
+import com.catpuppyapp.puppygit.style.MyStyleKt
 import com.catpuppyapp.puppygit.utils.Libgit2Helper
 import com.catpuppyapp.puppygit.utils.doJobThenOffLoading
 import com.catpuppyapp.puppygit.utils.state.CustomStateSaveable
@@ -24,7 +25,7 @@ import java.io.File
 
 @Composable
 fun ApplyPatchDialog(
-    showDialog: MutableState<Boolean>,
+    errMsg: String,
     selectedRepo:CustomStateSaveable<RepoEntity>,
     checkOnly:MutableState<Boolean>,
     patchFileFullPath:String,
@@ -42,17 +43,27 @@ fun ApplyPatchDialog(
         requireShowTextCompose = true,
         textCompose = {
             ScrollableColumn {
-                if(loadingRepoList || repoList.isEmpty()) {  //正在加载仓库列表，或者加载完了，但仓库列表为空
+                val hasErr = errMsg.isNotEmpty()
+                if(hasErr || loadingRepoList || repoList.isEmpty()) {  //正在加载仓库列表，或者加载完了，但仓库列表为空
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(stringResource(if(loadingRepoList) R.string.loading else R.string.repo_list_is_empty))
+                        MySelectionContainer {
+                            if(hasErr) {
+                                Text(errMsg, color = MyStyleKt.TextColor.error())
+                            }else {
+                                Text(stringResource(if(loadingRepoList) R.string.loading else R.string.repo_list_is_empty))
+                            }
+                        }
                     }
                 } else {  //加载仓库列表完毕，并且列表非空
-                    Text(text = stringResource(R.string.select_target_repo)+":")
-                    Spacer(modifier = Modifier.height(10.dp))
+                    MySelectionContainer {
+                        DefaultPaddingText(text = stringResource(R.string.select_target_repo)+":")
+                    }
+
+                    Spacer(modifier = Modifier.height(5.dp))
 
                     SingleSelectList(optionsList = repoList,
                         menuItemSelected = {idx, value -> value.id == selectedRepo.value.id},
@@ -66,7 +77,9 @@ fun ApplyPatchDialog(
 
                     MyCheckBox(stringResource(R.string.check_only), checkOnly)
                     if(checkOnly.value) {
-                        DefaultPaddingText(stringResource(R.string.apply_patch_check_note))
+                        MySelectionContainer {
+                            DefaultPaddingText(stringResource(R.string.apply_patch_check_note))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
