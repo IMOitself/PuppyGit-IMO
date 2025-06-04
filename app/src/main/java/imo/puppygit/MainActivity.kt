@@ -55,6 +55,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            MaterialTheme(
+                colorScheme = darkColorPalette
+            ) {
+                MainScreen()
+            }
+        }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun DefaultPreview() {
+        MaterialTheme(
+            colorScheme = darkColorPalette
+        ) {
             MainScreen()
         }
     }
@@ -173,16 +187,6 @@ class MainActivity : ComponentActivity() {
         Spacer(Modifier.width(8.dp))
         IconButton(onClick = { /* TODO */ }, modifier = Modifier.defaultButtonBg().size(32.dp)) {
             Icon(imageVector = Icons.Filled.MoreHoriz, contentDescription = "More Actions", modifier = Modifier.fillMaxSize())
-        }
-    }
-
-    @Preview(showBackground = true)
-    @Composable
-    fun DefaultPreview() {
-        MaterialTheme(
-            colorScheme = darkColorPalette
-        ) {
-            MainScreen()
         }
     }
 
