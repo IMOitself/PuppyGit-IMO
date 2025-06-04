@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
                         if (inputStream != null) {
                             try {
                                 inputStream.close()
-                            } catch (ignored: IOException) {
+                            } catch (_: IOException) {
                                 // Intentionally ignored as per requirements
                             }
                         }
@@ -94,9 +94,9 @@ class MainActivity : ComponentActivity() {
             appInfo.sourceDir = apkPath
             appInfo.publicSourceDir = apkPath
 
-            val appName = appInfo.loadLabel(pm) ?: return null
+            val appName = appInfo.loadLabel(pm)
             return appName.toString()
-        } catch (e: Exception) { }
+        } catch (_: Exception) { }
         finally {
             if (isTempFileUsed && tempFile != null && tempFile.exists()) {
                 tempFile.delete()
