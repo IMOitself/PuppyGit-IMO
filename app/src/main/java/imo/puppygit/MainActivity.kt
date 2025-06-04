@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
@@ -96,7 +97,7 @@ class MainActivity : ComponentActivity() {
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Filled.Menu, // Placeholder for GitHub logo or similar
+                        Icons.Filled.TripOrigin, // Placeholder for GitHub logo or similar
                         contentDescription = "GitHub Logo",
                         modifier = Modifier.size(28.dp)
                     )
