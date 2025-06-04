@@ -1,5 +1,6 @@
 package imo.puppygit
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,6 +64,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun goToMainActivity(){
+        val intent = Intent(this, com.catpuppyapp.puppygit.play.pro.MainActivity::class.java)
+        startActivity(intent)
+    }
+
     @Preview(showBackground = true)
     @Composable
     fun DefaultPreview() {
@@ -108,7 +114,7 @@ class MainActivity : ComponentActivity() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             // menu_icon
-            IconButton(onClick = { /* TODO */ }, modifier = Modifier.defaultButtonBg().size(32.dp)) {
+            IconButton(onClick = { goToMainActivity() }, modifier = Modifier.defaultButtonBg().size(32.dp)) {
                 Icon(imageVector = Icons.Filled.Menu, contentDescription = "Menu")
             }
             Spacer(modifier = Modifier.width(8.dp))
