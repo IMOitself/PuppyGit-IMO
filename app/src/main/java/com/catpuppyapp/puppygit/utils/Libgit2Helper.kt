@@ -99,7 +99,9 @@ import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.nio.charset.Charset
 import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.EnumSet
+import java.util.Locale
 
 
 private const val TAG = "Libgit2Helper"
@@ -4901,14 +4903,19 @@ object Libgit2Helper {
         return parentList
     }
 
-    fun getDateTimeStrOfCommit(commit: Commit, settings: AppSettings):String {
+    fun getDateTimeStrOfCommit(commit: Commit, settings: AppSettings): String {
         val time = commit.time()
 
-        //若设置项里有有效时区，使用；否则使用提交中携带的时区（一般是系统时区）
+        // If there is a valid time zone in the settings, use it; otherwise, use the time zone carried in the commit (usually the system time zone)
         val minuteOffset = readTimeZoneOffsetInMinutesFromSettingsOrDefault(settings, commit.timeOffset())
 
-        val secOffset = minuteOffset * 60  // commit.timeOffset() 返回的是分钟偏移量，需要转换成秒给java的对象使用
-        val formattedTimeStr = time.atOffset(ZoneOffset.ofTotalSeconds(secOffset)).format(Cons.defaultDateTimeFormatter)
+        val secOffset = minuteOffset * 60  // commit.timeOffset() returns the minute offset, needs to be converted to seconds
+
+        // Define the desired date time formatter for "June 1 2025 1:06pm"
+        val desiredFormatter = DateTimeFormatter.ofPattern("MMMM d yyyy h:mma", Locale.ENGLISH)
+
+        // Apply the offset to the Instant and then format it
+        var formattedTimeStr = time.atOffset(ZoneOffset.ofTotalSeconds(secOffset)).format(desiredFormatter)
 
         return formattedTimeStr
     }
