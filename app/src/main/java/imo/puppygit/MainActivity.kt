@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,8 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -40,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
         secondaryContainer = Color(0xFF999999),
         tertiary = Color(0xFF29903B)
     )
+    private val showBottomBar = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,13 +86,18 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreen() {
-        Scaffold(topBar = { TopBar() })
+        Scaffold(
+            topBar = { TopBar() },
+            bottomBar = { if (showBottomBar) BottomBar() }
+        )
         { paddingValues ->
             Column(
                 modifier = Modifier
                     .background(color = MaterialTheme.colorScheme.primaryContainer)
                     .padding(paddingValues)
                     .fillMaxSize()
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -98,6 +108,12 @@ class MainActivity : ComponentActivity() {
                     Spacer(Modifier.weight(1f))
                     ActionSection()
                 }
+                Spacer(modifier = Modifier.height(64.dp))
+                Text(
+                    text = "Show Changed files here\n\n¯\\_(ツ)_/¯",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
@@ -153,6 +169,47 @@ class MainActivity : ComponentActivity() {
                 Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = "Profile")
             }
         }
+    }
+
+    @OptIn(ExperimentalLayoutApi::class)
+    @Composable
+    fun BottomBar() {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(color = MaterialTheme.colorScheme.primary)
+                .padding(8.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(imageVector = Icons.Filled.Android, contentDescription = "Apk", modifier = Modifier.size(32.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = "ApplicationName",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                modifier = Modifier.weight(1.0f)
+            )
+            Row(
+                modifier = Modifier
+                    .height(32.dp)
+                    .highlightButtonBg(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Filled.Download,
+                    contentDescription = "Install",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Continue Install Apk", style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            }
     }
 
     @Composable
