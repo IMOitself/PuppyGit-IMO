@@ -43,15 +43,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) { // Override onCreate
+    private val buttonBorderColor = Color(0xFF9198A1)
+    private val buttonBorderRadius = 4.dp
+    private val darkColorPalette = darkColorScheme(
+        primary = Color(0xFF010409),
+        primaryContainer = Color(0xFF0D1117),
+        secondaryContainer = Color(0xFF999999),
+        tertiary = Color(0xFF29903B)
+    )
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            TranslatedScreen()
+            MainScreen()
         }
     }
 
     @Composable
-    fun TranslatedScreen() {
+    fun MainScreen() {
         Scaffold(topBar = { TopBar() })
         { paddingValues ->
             Column(
@@ -94,12 +103,12 @@ class MainActivity : ComponentActivity() {
 
             FlowRow(modifier = Modifier.weight(1.0f)) {
                 Text(
-                    text = "IMOitself / ",
+                    text = "ParentFolderPath / ",
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1
                 )
                 Text(
-                    text = "hunter_exam",
+                    text = "RepositoryLabel",
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1
@@ -156,7 +165,7 @@ class MainActivity : ComponentActivity() {
             Spacer(Modifier.width(8.dp))
             Icon(imageVector = Icons.Filled.Code, contentDescription = "Command", modifier = Modifier.size(16.dp))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Actions", style = MaterialTheme.typography.bodySmall,)
+            Text(text = "Actions", style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.width(8.dp))
             Icon(imageVector = Icons.Filled.ArrowDropDown, contentDescription = "Dropdown", modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
@@ -171,44 +180,33 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun DefaultPreview() {
         MaterialTheme(
-            //colorScheme = if (isSystemInDarkTheme()) DarkColorPalette else lightColorScheme()
-            colorScheme = DarkColorPalette
+            colorScheme = darkColorPalette
         ) {
-            TranslatedScreen()
+            MainScreen()
         }
     }
 
-    private val DarkColorPalette = darkColorScheme(
-    primary = Color(0xFF010409),
-    primaryContainer = Color(0xFF0D1117),
-    secondaryContainer = Color(0xFF999999),
-    tertiary = Color(0xFF29903B)
+    @Composable
+    private fun Modifier.highlightButtonBg(): Modifier = this.then(
+        Modifier
+            .background(
+                color = MaterialTheme.colorScheme.tertiary,
+                shape = RoundedCornerShape(buttonBorderRadius)
+            )
+            .border(
+                border = BorderStroke(0.dp, Color(0x00000000)),
+                shape = RoundedCornerShape(buttonBorderRadius)
+            )
     )
-
-    val cornerRadius = 4.dp
-
     private fun Modifier.defaultButtonBg(): Modifier = this.then(
         Modifier
             .background(
                 color = Color(0x00000000),
-                shape = RoundedCornerShape(cornerRadius)
+                shape = RoundedCornerShape(buttonBorderRadius)
             )
             .border(
-                border = BorderStroke(0.25.dp, Color(0xFF9198A1)),
-                shape = RoundedCornerShape(cornerRadius)
+                border = BorderStroke(0.25.dp, buttonBorderColor),
+                shape = RoundedCornerShape(buttonBorderRadius)
             )
     )
-
-    @Composable
-    private fun Modifier.highlightButtonBg(): Modifier = this.then(
-            Modifier
-                .background(
-                    color = MaterialTheme.colorScheme.tertiary,
-                    shape = RoundedCornerShape(cornerRadius)
-                )
-                .border(
-                    border = BorderStroke(0.dp, Color(0x00000000)),
-                    shape = RoundedCornerShape(cornerRadius)
-                )
-        )
 }
