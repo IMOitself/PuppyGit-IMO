@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -46,7 +47,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun MainScreen() {
-    val context: Context? = LocalContext.current
+    val context: Context = LocalContext.current
     MaterialTheme(
         colorScheme = darkColorPalette
     ) {
@@ -88,7 +89,7 @@ fun MainScreen() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TopBar(context: Context?) {
+fun TopBar(context: Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,7 +147,7 @@ fun TopBar(context: Context?) {
 }
 
 @Composable
-fun BottomBar(context: Context?) {
+fun BottomBar(context: Context) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -160,7 +161,7 @@ fun BottomBar(context: Context?) {
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = "$MainActivity.appNameRetrieve",
+            text = "${MainActivity.appNameRetrieve}",
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             modifier = Modifier.weight(1.0f)
@@ -168,10 +169,10 @@ fun BottomBar(context: Context?) {
         Row(
             modifier = Modifier
                 .height(32.dp)
-                .highlightButtonBg(),
+                .highlightButtonBg()
+                .clickable { MainActivity.continueInstallApk(context) },
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Spacer(Modifier.width(8.dp))
             Icon(
                 imageVector = Icons.Filled.Download,
@@ -186,7 +187,7 @@ fun BottomBar(context: Context?) {
 }
 
 @Composable
-fun BranchSection(context: Context?) {
+fun BranchSection(context: Context) {
     Row(
         modifier = Modifier
             .height(32.dp)
@@ -205,7 +206,7 @@ fun BranchSection(context: Context?) {
 }
 
 @Composable
-fun ActionSection(context: Context?) {
+fun ActionSection(context: Context) {
     Row(
         modifier = Modifier
             .height(32.dp)

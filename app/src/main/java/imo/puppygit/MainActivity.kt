@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
@@ -18,16 +20,47 @@ class MainActivity : ComponentActivity() {
     companion object {
         var showBottomBar = true
         var appNameRetrieve: String? = null
-        fun goToMainActivity(context: Context?){
+        var apkFileUri: Uri? = null
+
+        fun goToMainActivity(context: Context){
             val intent = Intent(context , com.catpuppyapp.puppygit.play.pro.MainActivity::class.java)
-            context?.startActivity(intent)
+            context.startActivity(intent)
+        }
+        fun continueInstallApk(context: Context) {
+            if (!context.packageManager.canRequestPackageInstalls()) {
+                Toast.makeText(
+                    context,
+                    "Please grant permission to install from unknown sources in settings, then try installing again.",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    context.startActivity(settingsIntent)
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Could not open settings to grant permission.", Toast.LENGTH_SHORT).show()
+                }
+                return
+            }
+
+            // Permission already granted
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkFileUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            context.startActivity(installIntent)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val apkFileUri = intent.data
+        apkFileUri = intent.data
         if (apkFileUri != null) appNameRetrieve = getAppNameFromApkUri(this, apkFileUri)
         if (apkFileUri == null) showBottomBar = false
 
