@@ -9,11 +9,17 @@ import com.catpuppyapp.puppygit.constants.Cons
 import com.catpuppyapp.puppygit.constants.StorageDirCons
 import com.catpuppyapp.puppygit.data.entity.common.BaseFields
 import com.catpuppyapp.puppygit.etc.RepoPendingTask
+import com.catpuppyapp.puppygit.settings.AppSettings
+import com.catpuppyapp.puppygit.settings.SettingsUtil
 import com.catpuppyapp.puppygit.utils.Libgit2Helper
+import com.catpuppyapp.puppygit.utils.MyLog
 import com.catpuppyapp.puppygit.utils.dbIntToBool
 import com.catpuppyapp.puppygit.utils.getSecFromTime
+import com.catpuppyapp.puppygit.utils.getShortTimeIfPossible
 import com.catpuppyapp.puppygit.utils.getShortUUID
 import com.github.git24j.core.Repository
+
+private const val TAG = "RepoEntity"
 
 @Entity(tableName = "repo")
 data class RepoEntity(
@@ -130,6 +136,7 @@ data class RepoEntity(
 
     @Ignore
     var lastCommitHashShort:String? = null  //最后提交hash，短
+        private set
         get() {
             val tmp =  field
             if(tmp != null && lastCommitHash.startsWith(tmp)) {
@@ -141,20 +148,28 @@ data class RepoEntity(
 
     @Ignore
     var lastCommitDateTime:String=""
+        private set
 
+    // this filed no need set in copy, will re-generate and cache the value at first time getting
+    @Ignore
+    private var lastUpdateTimeFormattedCached:String? = null
 
     /**
      * 拷贝所有字段，包括不在data class构造器的字段
      */
-    fun copyAllFields():RepoEntity {
-        val newInstance = copy()
-
+    fun copyAllFields(
+        newInstance: RepoEntity = copy(),
+        settings: AppSettings = SettingsUtil.getSettingsSnapshot()
+    ):RepoEntity {
         newInstance.gitRepoState = gitRepoState
         newInstance.parentRepoName = parentRepoName
         newInstance.parentRepoValid = parentRepoValid
         newInstance.otherText = otherText
         newInstance.pendingTask = pendingTask
         newInstance.lastCommitDateTime = lastCommitDateTime
+
+        updateLastCommitHashShort()
+        updateCommitDateTime(settings)
 
         return newInstance
     }
@@ -178,5 +193,33 @@ data class RepoEntity(
 
     fun getRepoStateStr(context: Context): String {
         return Libgit2Helper.getRepoStateStr(gitRepoState, context)
+    }
+
+    fun updateLastCommitHashShort() {
+        lastCommitHashShort = Libgit2Helper.getShortOidStrByFull(lastCommitHash)
+    }
+
+    // update date time of commit
+    fun updateCommitDateTime(settings: AppSettings) {
+        try {
+            Repository.open(fullSavePath).use { repo ->
+                updateCommitDateTimeWithRepo(repo, settings)
+            }
+        }catch (e: Exception) {
+            MyLog.e(TAG, "#updateCommitDateTime: resolve commit hash failed! hash=$lastCommitHash, err=${e.localizedMessage}")
+        }
+    }
+
+    fun updateCommitDateTimeWithRepo(repo: Repository, settings: AppSettings) {
+        lastCommitDateTime = try {
+            getShortTimeIfPossible(Libgit2Helper.getSingleCommit(repo, repoId = id, commitOidStr = lastCommitHash, settings).dateTime)
+        }catch (e: Exception) {
+            MyLog.e(TAG, "#updateCommitDateTimeWithRepo: resolve commit hash failed! hash=$lastCommitHash, err=${e.localizedMessage}")
+            ""
+        }
+    }
+
+    fun cachedLastUpdateTime():String {
+        return lastUpdateTimeFormattedCached ?: getShortTimeIfPossible(lastUpdateTime).let { lastUpdateTimeFormattedCached = it; it }
     }
 }

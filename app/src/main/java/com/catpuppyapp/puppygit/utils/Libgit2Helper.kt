@@ -2078,8 +2078,9 @@ object Libgit2Helper {
 //传参数则会把remote和branch替换为传来的参数，若想获得某个branch的singlebranch refspec，把期望的branch传进来即可，
 // 以默认remote origin举例，返回值形如：+refs/heads/yourbranch:refs/remotes/origin/yourbranch
     fun getGitRemoteFetchRefSpec(remote:String=Cons.gitDefaultRemoteOrigin, branch:String=Cons.gitFetchAllBranchSign):String {
-        val replacedRemoteStr = Cons.gitFetchRefSpecRemoteAndBranchReplacer.replace(Cons.gitRemotePlaceholder, remote)
-        return replacedRemoteStr.replace(Cons.gitBranchPlaceholder, branch)
+        return Cons.gitFetchRefSpecRemoteAndBranchReplacer
+            .replace(Cons.gitRemotePlaceholder, remote)
+            .replace(Cons.gitBranchPlaceholder, branch)
     }
 
     //向配置文件追加条目，key一样，但value不一样，同一个key可以有多个value，形成一个列表，例如：
@@ -5149,12 +5150,9 @@ object Libgit2Helper {
                 val head = resolveHEAD(repo)
                 repoFromDb.branch = head?.shorthand()?:""
                 repoFromDb.lastCommitHash = head?.id()?.toString() ?: ""  // no commit hash will show empty str
-                repoFromDb.lastCommitHashShort = getShortOidStrByFull(repoFromDb.lastCommitHash)
+                repoFromDb.updateLastCommitHashShort()
 
-                if(repoFromDb.lastCommitHash.isNotBlank()) {
-                    val headCommit = Libgit2Helper.getSingleCommit(repo = repo, repoId = repoFromDb.id, commitOidStr = repoFromDb.lastCommitHash, settings = settings)
-                    repoFromDb.lastCommitDateTime = headCommit.dateTime
-                }
+                repoFromDb.updateCommitDateTimeWithRepo(repo, settings)
 
                 repoFromDb.isDetached = boolToDbInt(repo.headDetached())
                 if(!dbIntToBool(repoFromDb.isDetached)) {  //只有非detached才有upstream
@@ -7270,7 +7268,7 @@ object Libgit2Helper {
                                 repo2ndQuery.branch = headRef.shorthand()
                                 //提交短id
                                 repo2ndQuery.lastCommitHash = headRef.id()?.toString() ?: ""
-                                repo2ndQuery.lastCommitHashShort = Libgit2Helper.getShortOidStrByFull(repo2ndQuery.lastCommitHash)
+                                repo2ndQuery.updateLastCommitHashShort()
                             }
 //                                    }  //如果用户填了branch且克隆成功，那branch是绝对正确的，这里就不需要更新repo2ndQuery的branch字段了
 //                                    else {  //用户填了branch的情况
