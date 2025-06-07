@@ -1,6 +1,44 @@
 
 
 ---
+1.1.2.7v103 - 20250606:
+- fix: sometimes commit item not update after reset
+- add Thanks list in About screen
+
+
+
+- 修复提交条目在重置后不更新的bug
+- 关于页面添加感谢列表
+
+
+---
+1.1.2.6v102 - 20250605:
+- fix sometimes commit info not update after create tag or branch
+
+
+
+- 修复某些情况下提交信息在创建tag或分支后不更新的bug
+
+
+---
+1.1.2.5v101 - 20250605:
+- fix repos loading slow
+
+
+
+- 修复仓库页面加载缓慢
+
+
+---
+1.1.2.4v100 - 20250605:
+- adjust time format for file list item
+
+
+
+- 调整文件列表条目的时间格式
+
+
+---
 1.1.2.3v99 - 20250604:
 - can choose checkout left or right when compare two commits
 - adjust time format for repo card

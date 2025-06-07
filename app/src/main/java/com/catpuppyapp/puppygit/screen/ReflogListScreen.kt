@@ -221,6 +221,8 @@ fun ReflogListScreen(
         showCheckoutDialog.value = true
     }
 
+    val branchNameForCheckout = rememberSaveable { mutableStateOf("") }
+
     if(showCheckoutDialog.value) {
         val id = (if(checkoutNew.value) curLongClickItem.value.idNew else curLongClickItem.value.idOld) ?: Cons.git_AllZeroOid
 
@@ -233,6 +235,7 @@ fun ReflogListScreen(
 
             CheckoutDialog(
                 showCheckoutDialog=showCheckoutDialog,
+                branchName = branchNameForCheckout,
                 from = CheckoutDialogFrom.OTHER,
                 expectCheckoutType = Cons.checkoutType_checkoutCommitThenDetachHead,
                 curRepo = curRepo.value,
@@ -244,7 +247,7 @@ fun ReflogListScreen(
                 loadingOn = loadingOn,
                 loadingOff = loadingOff,
                 onlyUpdateCurItem = false,  //设为false，将会执行refreshPage刷新页面
-                updateCurItem = {curItemIdx, fullOid-> },
+                updateCurItem = {_, _, _, _ -> },
                 refreshPage = { changeStateTriggerRefreshPage(needRefresh) },
                 curCommitIndex = -1,
                 findCurItemIdxInList = { fullOid->  //无需更新当前条目

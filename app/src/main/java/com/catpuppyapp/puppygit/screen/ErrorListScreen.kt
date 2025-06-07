@@ -106,16 +106,7 @@ fun ErrorListScreen(
     val curObjInState = mutableCustomStateOf(keyTag = stateKeyTag, keyName = "curObjInState",initValue = ErrorEntity())
     val showClearAllConfirmDialog = rememberSaveable { mutableStateOf(false)}
 
-    val doClearAll={
-        doJobThenOffLoading {
-            val errDb = AppModel.dbContainer.errorRepository
-            errDb.deleteByRepoId(repoId)
 
-//            list.clear()
-            //x 找到原因了：因为之前用的是 mutableList() 而不是 mutableStateListOf()) 奇怪啊，这个不知道为什么这里的刷新不好使，就非得在上面把list clear一下才行不然列表就还是有东西，但点击刷新后东西就没了，不知道什么原因，以后再排查吧
-            changeStateTriggerRefreshPage(needRefresh)
-        }
-    }
 
     val filterResultNeedRefresh = rememberSaveable { mutableStateOf("") }
 
@@ -180,6 +171,13 @@ fun ErrorListScreen(
 //    }.value
     // 向下滚动监听，结束
 
+    val removeItemByPredicate = { predicate:(ErrorEntity)->Boolean ->
+        if(enableFilterState.value) {
+            filterList.value.removeIf { predicate(it) }
+        }
+
+        list.value.removeIf { predicate(it) }
+    }
 
     val showTitleInfoDialog = rememberSaveable { mutableStateOf(false) }
     if(showTitleInfoDialog.value) {
@@ -195,13 +193,22 @@ fun ErrorListScreen(
     val lastPosition = rememberSaveable { mutableStateOf(0) }
 
     if(showClearAllConfirmDialog.value) {
-        ConfirmDialog(title=stringResource(R.string.clear_all),
+        ConfirmDialog(
+            title=stringResource(R.string.clear_all),
             text=stringResource(R.string.clear_all_ask_text),
             okTextColor = MyStyleKt.TextColor.danger(),
-            onCancel = {showClearAllConfirmDialog.value=false},  //关闭弹窗
+            onCancel = { showClearAllConfirmDialog.value=false },
             onOk = {
-                showClearAllConfirmDialog.value=false  //关闭弹窗
-                doClearAll()  //执行操作
+                //关闭弹窗
+                showClearAllConfirmDialog.value = false
+
+                doJobThenOffLoading {
+                    AppModel.dbContainer.errorRepository.deleteByRepoId(repoId)
+
+                    Msg.requireShow(activityContext.getString(R.string.success))
+
+                    changeStateTriggerRefreshPage(needRefresh)
+                }
             }
         )
     }
@@ -211,7 +218,7 @@ fun ErrorListScreen(
     val showViewDialog = rememberSaveable { mutableStateOf(false) }
     if(showViewDialog.value) {
         CopyableDialog(
-            title = stringResource(id = R.string.error_msg),
+            title = stringResource(R.string.error_msg),
             text = viewDialogText.value,
             onCancel = {
                 showViewDialog.value=false
@@ -353,14 +360,19 @@ fun ErrorListScreen(
 //                BottomSheetItem(sheetState=sheetState, showBottomSheet=showBottomSheet, text=stringResource(R.string.view_msg)){
 //                    //弹窗显示错误信息，可复制
 //                }
-                BottomSheetItem(sheetState=sheetState, showBottomSheet=showBottomSheet, text=stringResource(R.string.delete), textColor = MyStyleKt.TextColor.danger()){
-                    // onClick()
-                    //在这里可以直接用state curObj取到当前选中条目，curObjInState在长按条目后会被更新为当前被长按的条目
-                    // 不用确认，直接删除，可以有撤销的snackbar，但非必须
+                BottomSheetItem(sheetState=sheetState, showBottomSheet=showBottomSheet, text=stringResource(R.string.delete), textColor = MyStyleKt.TextColor.danger()) {
+                    val target = curObjInState.value
+
                     doJobThenOffLoading {
-                        val errDb = AppModel.dbContainer.errorRepository
-                        errDb.delete(curObjInState.value)
-                        changeStateTriggerRefreshPage(needRefresh)
+                        // remove from db
+                        AppModel.dbContainer.errorRepository.delete(target)
+
+                        // remove from list/filterList
+                        removeItemByPredicate {
+                            it.id == target.id
+                        }
+
+                        Msg.requireShow(activityContext.getString(R.string.success))
                     }
                 }
             }
@@ -411,14 +423,18 @@ fun ErrorListScreen(
             ) { idx, it ->
                 //在这个组件里更新了 state curObj，所以长按后直接用curObj就能获取到当前对象了
                 ErrorItem(showBottomSheet,curObjInState,idx, lastClickedItemKey, it) {
+                    val suffix = "\n\n"
                     val sb = StringBuilder()
-                    sb.append(activityContext.getString(R.string.id)).append(": ").appendLine(it.id).appendLine()
-                        .append(activityContext.getString(R.string.date)).append(": ").appendLine(it.date).appendLine()
-                        .append(activityContext.getString(R.string.msg)).append(": ").appendLine(it.msg)
 
-                    viewDialogText.value = sb.toString()
+                    sb.append(activityContext.getString(R.string.id)).append(": ").append(it.id).append(suffix)
+                    sb.append(activityContext.getString(R.string.date)).append(": ").append(it.date).append(suffix)
+                    sb.append(activityContext.getString(R.string.msg)).append(": ").append(it.msg).append(suffix)
+
+                    viewDialogText.value = sb.removeSuffix(suffix).toString()
+
                     showViewDialog.value = true
                 }
+
                 HorizontalDivider()
             }
 

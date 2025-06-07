@@ -68,7 +68,13 @@ data class OpenSource(
     val licenseLink:String,
 )
 
-private val openSourceList= listOf(
+data class Contributor(
+    val name:String,
+    val link:String,
+    val desc:String,
+)
+
+private val openSourceList = listOf(
     OpenSource(projectName = "libgit2", projectLink = "https://github.com/libgit2/libgit2", licenseLink = "https://raw.githubusercontent.com/libgit2/libgit2/main/COPYING"),
     OpenSource(projectName = "git24j", projectLink = "https://github.com/git24j/git24j", licenseLink = "https://raw.githubusercontent.com/git24j/git24j/master/LICENSE"),
     OpenSource(projectName = "text-editor-compose", projectLink = "https://github.com/kaleidot725/text-editor-compose", licenseLink = "https://raw.githubusercontent.com/kaleidot725/text-editor-compose/main/LICENSE"),
@@ -76,6 +82,14 @@ private val openSourceList= listOf(
     OpenSource(projectName = "libssh2", projectLink = "https://github.com/libssh2/libssh2", licenseLink = "https://raw.githubusercontent.com/libssh2/libssh2/refs/heads/master/COPYING"),
     OpenSource(projectName = "compose-markdown", projectLink = "https://github.com/jeziellago/compose-markdown", licenseLink = "https://github.com/jeziellago/compose-markdown/blob/main/LICENSE"),
     OpenSource(projectName = "swipe", projectLink = "https://github.com/saket/swipe", licenseLink = "https://github.com/saket/swipe/blob/trunk/LICENSE.txt"),
+)
+
+
+private val contributorList = listOf(
+    Contributor(name = "triksterr", link = "https://github.com/triksterr", desc = "Russian translator"),
+    Contributor(name = "mikropsoft", link = "https://github.com/mikropsoft", desc = "Turkish translator"),
+    Contributor(name = "Hussain96o", link = "https://github.com/Hussain96o", desc = "Arabic translator"),
+    Contributor(name = "sebastien46", link = "https://github.com/sebastien46", desc = "Monochrome app icon"),
 )
 
 @Composable
@@ -290,40 +304,76 @@ fun AboutInnerPage(
 
             )
         }
+
         HorizontalDivider(modifier = Modifier.padding(10.dp))
+
         //开源项目列表
-        Row (modifier = Modifier.padding(10.dp)){
-            Text(text = stringResource(id = R.string.powered_by_open_source)+":")
-        }
+        TitleRow(stringResource(id = R.string.powered_by_open_source))
+
+        val licenseStrRes = stringResource(R.string.license)
+
         openSourceList.forEach {
-            Column (
-                modifier = Modifier.padding(5.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ){
-                ClickableText(
-                    text = it.projectName,
-//                    fontSize = 14.sp,
-                    modifier = MyStyleKt.ClickableText.modifierNoPadding.clickable {
-                        //                        copy(it.projectLink)
-                        ActivityUtil.openUrl(activityContext, it.projectLink)
-                    },
-                )
-                Spacer(Modifier.height(2.dp))
-                ClickableText(
-                    text = "("+stringResource(R.string.license)+")",
-                    fontSize = 12.sp,
-                    modifier = MyStyleKt.ClickableText.modifierNoPadding.clickable {
-                        //                        copy(it.projectLink)
-                        ActivityUtil.openUrl(activityContext, it.licenseLink)
-                    },
-                )
+            DoubleClickableRow(
+                row1Text = it.projectName,
+                row2Text = licenseStrRes,
+                row1OnClick = { ActivityUtil.openUrl(activityContext, it.projectLink) },
+                row2OnClick = { ActivityUtil.openUrl(activityContext, it.licenseLink) },
+            )
+        }
 
-                Spacer(Modifier.height(10.dp))
+        HorizontalDivider(modifier = Modifier.padding(10.dp))
 
-            }
+        //开源项目列表
+        TitleRow("Thanks")
+
+        contributorList.forEach {
+            DoubleClickableRow(
+                row1Text = it.name,
+                row2Text = it.desc,
+                row1OnClick = { ActivityUtil.openUrl(activityContext, it.link) },
+                row2OnClick = { ActivityUtil.openUrl(activityContext, it.link) },
+            )
         }
 
         SpacerRow()
     }
 
+}
+
+@Composable
+private fun TitleRow(title:String) {
+    Row (modifier = Modifier.padding(10.dp)){
+        Text(text = title, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun DoubleClickableRow(
+    row1Text:String,
+    row2Text:String,
+    row1OnClick:()->Unit,
+    row2OnClick:()->Unit,
+) {
+    Column (
+        modifier = Modifier.padding(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ){
+        ClickableText(
+            text = row1Text,
+            modifier = MyStyleKt.ClickableText.modifierNoPadding.clickable {
+                row1OnClick()
+            },
+        )
+        Spacer(Modifier.height(2.dp))
+        ClickableText(
+            text = "($row2Text)",
+            fontSize = 12.sp,
+            modifier = MyStyleKt.ClickableText.modifierNoPadding.clickable {
+                row2OnClick()
+            },
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+    }
 }

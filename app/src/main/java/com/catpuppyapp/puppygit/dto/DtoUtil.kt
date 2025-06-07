@@ -48,8 +48,8 @@ fun createCommitDto(
     // 但如果没现成的commitOid也可直接传commit.id()过来，都行
     commitOid: Oid,
 
-    allBranchList: List<BranchNameAndTypeDto>,
-    allTagList:List<TagDto>,
+    allBranchList: List<BranchNameAndTypeDto>?,
+    allTagList:List<TagDto>?,
     commit: Commit,
 
     //数据库的repoId，用来判断当前是在操作哪个仓库
@@ -57,38 +57,48 @@ fun createCommitDto(
     repoId: String,
 
     repoIsShallow:Boolean,
-    shallowOidList:List<String>,
-    settings:AppSettings
+    shallowOidList:List<String>?,
+    settings:AppSettings,
+    queryParents:Boolean = true,
 ): CommitDto {
     val c = CommitDto()
 
     c.oidStr = commitOid.toString()  // next.toString() or commit.id() ，两者相同，但用 next.toString() 性能更好，因为Oid纯java实现，不需要jni
     c.shortOidStr = Libgit2Helper.getShortOidStrByFull(c.oidStr)
     val commitOidStr = commit.id().toString()
-    //添加分支列表
-    for (b in allBranchList) {
-        if (b.oidStr == commitOidStr) {
-            c.branchShortNameList.add(b.shortName)
-        }
-    }
-    //添加tag列表
-    for(t in allTagList) {
-        if(t.targetFullOidStr == commitOidStr) {
-            c.tagShortNameList.add(t.shortName)
+
+    if(allBranchList != null) {
+        //添加分支列表
+        for (b in allBranchList) {
+            if (b.oidStr == commitOidStr) {
+                c.branchShortNameList.add(b.shortName)
+            }
         }
     }
 
-    //添加parent列表，合并的提交就会有多个parent，一般都是1个
-    val parentCount = commit.parentCount()
-    if (parentCount > 0) {
-        var pc = 0
-        while (pc < parentCount) {
-            val parentOidStr = commit.parentId(pc).toString()
-            c.parentOidStrList.add(parentOidStr)
-            c.parentShortOidStrList.add(Libgit2Helper.getShortOidStrByFull(parentOidStr))
-            pc++
+    if(allTagList != null) {
+        //添加tag列表
+        for(t in allTagList) {
+            if(t.targetFullOidStr == commitOidStr) {
+                c.tagShortNameList.add(t.shortName)
+            }
         }
     }
+
+    if(queryParents) {
+        //添加parent列表，合并的提交就会有多个parent，一般都是1个
+        val parentCount = commit.parentCount()
+        if (parentCount > 0) {
+            var pc = 0
+            while (pc < parentCount) {
+                val parentOidStr = commit.parentId(pc).toString()
+                c.parentOidStrList.add(parentOidStr)
+                c.parentShortOidStrList.add(Libgit2Helper.getShortOidStrByFull(parentOidStr))
+                pc++
+            }
+        }
+    }
+
     c.dateTime = Libgit2Helper.getDateTimeStrOfCommit(commit, settings)
     c.originTimeOffsetInMinutes = commit.timeOffset()
 
@@ -105,7 +115,7 @@ fun createCommitDto(
     c.repoId = repoId
     c.treeOidStr = commit.treeId().toString()
 
-    if(repoIsShallow && shallowOidList.contains(c.oidStr)) {
+    if(repoIsShallow && shallowOidList != null && shallowOidList.contains(c.oidStr)) {
         c.isGrafted=true  //当前提交是shallow root
     }
 

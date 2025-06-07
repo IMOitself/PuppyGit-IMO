@@ -336,11 +336,14 @@ fun TagListScreen(
         showCheckoutDialog.value = true
     }
 
+    val branchNameForCheckout = rememberSaveable { mutableStateOf("") }
+
     if(showCheckoutDialog.value) {
         val item = selectedItemList.value.first()
 
         CheckoutDialog(
             showCheckoutDialog=showCheckoutDialog,
+            branchName = branchNameForCheckout,
             from = CheckoutDialogFrom.OTHER,
 //            expectCheckoutType = Cons.checkoutTypeCommit,  //用这个reflog不会包含tag名
             expectCheckoutType = Cons.checkoutType_checkoutRefThenDetachHead,  //用这个会包含tag名
@@ -353,7 +356,7 @@ fun TagListScreen(
             loadingOn = loadingOn,
             loadingOff = loadingOff,
             onlyUpdateCurItem = false,
-            updateCurItem = {curItemIdx, fullOid-> },  //不需要更新当前条目
+            updateCurItem = {_, _, _, _ -> },  //不需要更新当前条目
             refreshPage = {
                //更新当前仓库信息即可，目的是在title显示出最新的分支或提交信息
                 doJobThenOffLoading job@{
@@ -788,10 +791,11 @@ fun TagListScreen(
                     if(isInitLoading.value) {
                         Text(text = stringResource(R.string.loading))
                     }else {
-                        Row(modifier = Modifier.padding(horizontal = 10.dp)) {
+                        Row {
                             Text(text = stringResource(R.string.no_tags_found))
                         }
-                        Row(modifier = Modifier.padding(10.dp),
+
+                        Row(modifier = Modifier.padding(top = 10.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {

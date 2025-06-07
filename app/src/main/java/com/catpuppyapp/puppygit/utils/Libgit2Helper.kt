@@ -4370,7 +4370,12 @@ object Libgit2Helper {
         }
     }
 
-    fun getSingleCommit(repo: Repository, repoId: String, commitOidStr: String, settings: AppSettings) :CommitDto{
+    fun getSingleCommit(
+        repo: Repository,
+        repoId: String,
+        commitOidStr: String,
+        settings: AppSettings
+    ) :CommitDto{
         if(commitOidStr.isBlank()) {
             return CommitDto()
         }
@@ -4391,6 +4396,39 @@ object Libgit2Helper {
 
         val allTagList = getAllTags(repo, settings)
         return createCommitDto(commitOid, allBranchList, allTagList, commit, repoId, repoIsShallow, shallowOidList, settings)
+    }
+
+    fun getSingleCommitSimple(
+        repo: Repository,
+        repoId: String,
+        commitOidStr: String,
+        settings: AppSettings
+    ) :CommitDto{
+
+        if(commitOidStr.isBlank()) {
+            return CommitDto()
+        }
+        //后面如果出错会返回这个dto
+        val errReturnDto = CommitDto(oidStr = commitOidStr, shortOidStr = getShortOidStrByFull(commitOidStr))
+
+        val commitOid = runCatching { Oid.of(commitOidStr) }.getOrNull()
+        if(commitOid == null || commitOid.isNullOrEmptyOrZero) {
+            return errReturnDto
+        }
+
+        val commit = resolveCommitByHash(repo, commitOidStr)?:return errReturnDto
+        return createCommitDto(
+            commitOid = commitOid,
+            allBranchList = null,
+            allTagList = null,
+            commit = commit,
+            repoId = repoId,
+            repoIsShallow = false,
+            shallowOidList = null,
+            settings = settings,
+            queryParents = false
+        )
+
     }
 
     fun createRevwalk(
@@ -7315,10 +7353,11 @@ object Libgit2Helper {
 
                             //set remoteName and remoteUrl fields
 //                                    val defaultRemoteName = Remote.list(clonedRepo)[0]  // remote "origin"
-                            val defaultRemoteName = Cons.gitDefaultRemoteOrigin  //"origin"就是默认的名字，根本不用执行上面的查询
-                            repo2ndQuery.pullRemoteName = defaultRemoteName;
-                            repo2ndQuery.pushRemoteName = defaultRemoteName;
+//                            val defaultRemoteName = Cons.gitDefaultRemoteOrigin  //"origin"就是默认的名字，根本不用执行上面的查询
+                            val defaultRemoteName = Remote.list(clonedRepo).getOrNull(0) ?: Cons.gitDefaultRemoteOrigin  //一般"origin"就是默认的名字，但还是查一下保险，以免和实际的 remote name 不符
+                            repo2ndQuery.pullRemoteName = defaultRemoteName
                             repo2ndQuery.pullRemoteUrl = repo2ndQuery.cloneUrl
+                            repo2ndQuery.pushRemoteName = defaultRemoteName
                             repo2ndQuery.pushRemoteUrl = repo2ndQuery.cloneUrl
 
                             //更新isShallow的值，检查仓库有没有shallow文件就可以

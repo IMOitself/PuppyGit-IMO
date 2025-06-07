@@ -456,6 +456,7 @@ fun FilesInnerPage(
             textCompose = {
                 ScrollableColumn {
                     TextField(
+                        maxLines = MyStyleKt.defaultMultiLineTextFieldMaxLines,
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
@@ -925,7 +926,7 @@ fun FilesInnerPage(
                         ){
                             Text(text = stringResource(R.string.you_can_click_here_copy_err_msg),
                                 style = MyStyleKt.ClickableText.getStyle(),
-                                color = MyStyleKt.ClickableText.color,
+                                color = MyStyleKt.ClickableText.getColor(),
                             )
                         }
                         Spacer(modifier = Modifier.height(10.dp))
