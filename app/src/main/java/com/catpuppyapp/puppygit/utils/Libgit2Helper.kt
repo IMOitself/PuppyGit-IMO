@@ -1692,7 +1692,7 @@ object Libgit2Helper {
             MyLog.d(TAG, "#$funName(): hunk header: "+hunkAndLines.hunk.header)
 
             diffItem.hunks.add(hunkAndLines)
-            val lines = hunkAndLines.lines
+
             for(j in 0 until lineCnt) {
                 if(loadChannel!=null) {
                     if(++checkChannelLinesCount > checkChannelLinesLimit || checkChannelContentSizeCount>checkChannelSizeLimit) {
@@ -1787,11 +1787,10 @@ object Libgit2Helper {
 //                        println("line.numLines:"+line.numLines)
 //                    }
 
-                lines.add(pLine)
 
 
                 //20240618新增：实现增量diff相关代码
-                hunkAndLines.addLineToGroup(pLine)
+                hunkAndLines.addLine(pLine)
             }
         }
 
@@ -3255,6 +3254,7 @@ object Libgit2Helper {
                     rac.fetchCredential = credential
                 }
             }
+
             if(requirePushCredential) {
                 var credential: CredentialEntity? = null
                 //用户名和密码至少一个不为空才创建凭据
@@ -3268,6 +3268,7 @@ object Libgit2Helper {
                     rac.pushCredential = credential
                 }
             }
+
             //添加进待fetch/push列表
             remoteCredentialList.add(rac)
         }
@@ -4301,7 +4302,12 @@ object Libgit2Helper {
     //输入revspec，返回 Tree ，可以用来diff，或者从树上找某个文件之类的
     fun resolveTree(repo: Repository, revspec:String):Tree? {
         try {
-            val tree = Tree.lookup(repo, Revparse.lookup(repo, "$revspec^{tree}").getFrom().id(), GitObject.Type.TREE) as? Tree
+            val tree = if(revspec == Cons.git_IndexCommitHash) {
+                Tree.lookup(repo, repo.index().writeTree())
+            }else {
+                Tree.lookup(repo, Revparse.lookup(repo, "$revspec^{tree}").getFrom().id(), GitObject.Type.TREE) as? Tree
+            }
+
             return tree
         }catch (e:Exception) {
             MyLog.e(TAG, "#resolveTree() error, params are (revspec=$revspec),\nerr is: "+e.stackTraceToString())
@@ -7354,6 +7360,7 @@ object Libgit2Helper {
                             //set remoteName and remoteUrl fields
 //                                    val defaultRemoteName = Remote.list(clonedRepo)[0]  // remote "origin"
 //                            val defaultRemoteName = Cons.gitDefaultRemoteOrigin  //"origin"就是默认的名字，根本不用执行上面的查询
+                            // 其实 ?: 后面的代码永远不会被执行，因为克隆后的仓库都至少有一个名为origin的remote
                             val defaultRemoteName = Remote.list(clonedRepo).getOrNull(0) ?: Cons.gitDefaultRemoteOrigin  //一般"origin"就是默认的名字，但还是查一下保险，以免和实际的 remote name 不符
                             repo2ndQuery.pullRemoteName = defaultRemoteName
                             repo2ndQuery.pullRemoteUrl = repo2ndQuery.cloneUrl

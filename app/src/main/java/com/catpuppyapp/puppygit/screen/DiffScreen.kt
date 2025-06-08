@@ -96,6 +96,7 @@ import com.catpuppyapp.puppygit.git.DiffItemSaver
 import com.catpuppyapp.puppygit.git.DiffableItem
 import com.catpuppyapp.puppygit.git.PuppyHunkAndLines
 import com.catpuppyapp.puppygit.git.PuppyLine
+import com.catpuppyapp.puppygit.git.PuppyLineOriginType
 import com.catpuppyapp.puppygit.git.StatusTypeEntrySaver
 import com.catpuppyapp.puppygit.play.pro.R
 import com.catpuppyapp.puppygit.screen.content.homescreen.scaffold.actions.DiffPageActions
@@ -226,6 +227,9 @@ fun DiffScreen(
             treeOid2Str
         }
     ) }
+
+    val tree1FullHash = rememberSaveable { mutableStateOf("") }
+    val tree2FullHash = rememberSaveable { mutableStateOf("") }
 
     //这个值存到状态变量里之后就不用管了，与页面共存亡即可，如果旋转屏幕也没事，返回rememberSaveable可恢复
 //    val relativePathUnderRepoDecoded = (Cache.Map.getThenDel(Cache.Map.Key.diffScreen_UnderRepoPath) as? String)?:""
@@ -882,8 +886,8 @@ fun DiffScreen(
 
 
         sb.append(activityContext.getString(R.string.comparing_label)+": ").append(Libgit2Helper.getLeftToRightDiffCommitsText(treeOid1Str.value, treeOid2Str.value, false)).append(suffix)
-        sb.append(activityContext.getString(R.string.left)+": ").append(treeOid1Str.value).append(suffix)
-        sb.append(activityContext.getString(R.string.right)+": ").append(treeOid2Str.value).append(suffix)
+        sb.append(activityContext.getString(R.string.left)+": ").append(tree1FullHash.value).append(suffix)
+        sb.append(activityContext.getString(R.string.right)+": ").append(tree2FullHash.value).append(suffix)
 
         // 显示数量，例如： "当前：1，总数：10"
         sb.append(replaceStringResList(activityContext.getString(R.string.current_n_all_m), listOf((itemIdx+1).toString(), diffableItemList.value.size.toString()))).append(suffix)
@@ -1485,7 +1489,10 @@ fun DiffScreen(
                                             ScrollableRow(
                                                 //点击文件名显示详情
                                                 //确保最小可点击范围，这个不能放到外面的row里，外面的row还算了下面添加删除行的长度，多半会超，所以就没意义了
-                                                modifier = Modifier.clickable { initDetailsDialog(diffableItemIdx) }.widthIn(min = MyStyleKt.Title.clickableTitleMinWidth),
+                                                modifier = Modifier
+                                                    .clickable { initDetailsDialog(diffableItemIdx) }
+                                                    .widthIn(min = MyStyleKt.Title.clickableTitleMinWidth)
+                                                ,
                                             ) {
                                                 //显示：“文件名: +添加的行数, -删除的行数"，例如： "abc.txt: +1, -10"
 
@@ -1605,7 +1612,10 @@ fun DiffScreen(
                             if (submoduleIsDirty) {
                                 item {
                                     ScrollableRow (
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                        ,
                                         horizontalArrangement = Arrangement.Center,
                                     ) {
                                         Text(stringResource(R.string.submodule_is_dirty_note_short), fontWeight = FontWeight.Light, fontStyle = FontStyle.Italic)
@@ -1648,7 +1658,10 @@ fun DiffScreen(
                                 // hunk header
                                 item {
                                     Row(
-                                        modifier = Modifier.background(UIHelper.getHunkColor()).fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)
+                                        modifier = Modifier
+                                            .background(UIHelper.getHunkColor())
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 20.dp, vertical = 10.dp)
                                     ) {
                                         Text(
                                             text = hunkAndLines.hunk.cachedNoLineBreakHeader(),
@@ -1766,7 +1779,7 @@ fun DiffScreen(
                                                 val stringPartListWillUse = if (compareResult == null) {
                                                     //没发现选择比较的结果，比较下实际相同行号不同类型（add、del）的行
                                                     val modifyResult = hunkAndLines.getModifyResult(
-                                                        lineNum = line.lineNum,
+                                                        line = line,
                                                         requireBetterMatchingForCompare = requireBetterMatchingForCompare.value,
                                                         matchByWords = matchByWords.value
                                                     )
@@ -1834,9 +1847,9 @@ fun DiffScreen(
                                             }
 
 
-                                            val add = lines.get(Diff.Line.OriginType.ADDITION.toString())
-                                            val del = lines.get(Diff.Line.OriginType.DELETION.toString())
-                                            val context = lines.get(Diff.Line.OriginType.CONTEXT.toString())
+                                            val add = lines.get(PuppyLineOriginType.ADDED)
+                                            val del = lines.get(PuppyLineOriginType.DELETED)
+                                            val context = lines.get(PuppyLineOriginType.CONTEXT)
                                             //(deprecated:) 若 context del add同时存在，打印顺序为 context/del/add，不过不太可能3个同时存在，顶多两个同时存在
                                             //20250224 change: 若 context del add同时存在，打印顺序为 del/add/context ，不过不太可能3个同时存在，顶多两个同时存在
                                             val mergeDelAndAddToFakeContext = add != null && del != null && add.getContentNoLineBreak().equals(del.getContentNoLineBreak());
@@ -1866,27 +1879,31 @@ fun DiffScreen(
                                                 }
 
 
-                                                if (del != null && add != null && (delUsedPair.not() || addUsedPair.not())) {
-                                                    val modifyResult2 = CmpUtil.compare(
-                                                        add = StringCompareParam(add.content, add.content.length),
-                                                        del = StringCompareParam(del.content, del.content.length),
-
-                                                        //为true则对比更精细，但是，时间复杂度乘积式增加，不开 O(n)， 开了 O(nm)
-                                                        requireBetterMatching = requireBetterMatchingForCompare.value,
-                                                        matchByWords = matchByWords.value,
-
-                                                        //                                    swap = true
+                                                // add and del, which not use the compare pair result by select compare, get the defalut compare result with it's default related line
+                                                // 添加和删除，谁不使用选择比较的比较结果，就获取其和默认关联行的比较结果
+                                                if(del != null && !delUsedPair) {
+                                                    //没发现选择比较的结果，比较下实际相同行号不同类型（add、del）的行
+                                                    val modifyResult = hunkAndLines.getModifyResult(
+                                                        line = del,
+                                                        requireBetterMatchingForCompare = requireBetterMatchingForCompare.value,
+                                                        matchByWords = matchByWords.value
                                                     )
 
-                                                    if (modifyResult2.matched) {
-                                                        if (delUsedPair.not()) {
-                                                            delStringPartListWillUse = modifyResult2.del
-                                                        }
+                                                    if (modifyResult?.matched == true) {
+                                                        delStringPartListWillUse = modifyResult.del
+                                                    }
+                                                }
 
-                                                        if (addUsedPair.not()) {
-                                                            addStringPartListWillUse = modifyResult2.add
-                                                        }
+                                                if(add != null && !addUsedPair) {
+                                                    //没发现选择比较的结果，比较下实际相同行号不同类型（add、del）的行
+                                                    val modifyResult = hunkAndLines.getModifyResult(
+                                                        line = add,
+                                                        requireBetterMatchingForCompare = requireBetterMatchingForCompare.value,
+                                                        matchByWords = matchByWords.value
+                                                    )
 
+                                                    if (modifyResult?.matched == true) {
+                                                        addStringPartListWillUse = modifyResult.add
                                                     }
                                                 }
 
@@ -2291,18 +2308,36 @@ fun DiffScreen(
         val subDiffableItemList = Unit  // avoid mistake using
 
 
-        val treeOid1Str = treeOid1Str.value
-        val treeOid2Str = treeOid2Str.value
-
         //从数据库查询repo，记得用会自动调用close()的use代码块
         val repoDb = dbContainer.repoRepository
         val repoFromDb = repoDb.getById(repoId)
         if(repoFromDb == null) {
-            MyLog.e(TAG, "#LaunchedEffect: query repo entity failed, repoId=$repoId")
+            Msg.requireShowLongDuration(activityContext.getString(R.string.repo_id_invalid))
+            //没什么必要记，无非就是id无效，仓库不存在
+//            MyLog.e(TAG, "#LaunchedEffect: query repo entity failed, repoId=$repoId")
             return@LaunchedEffect
         }
 
         curRepo.value = repoFromDb
+
+
+        val treeOid1Str = treeOid1Str.value
+        val treeOid2Str = treeOid2Str.value
+
+        // resolve left and right to full hash
+        try {
+            Repository.open(repoFromDb.fullSavePath).use { repo ->
+                Libgit2Helper.resolveCommitByHashOrRef(repo, treeOid1Str).let {
+                    tree1FullHash.value = it.data?.id()?.toString() ?: treeOid1Str
+                }
+
+                Libgit2Helper.resolveCommitByHashOrRef(repo, treeOid2Str).let {
+                    tree2FullHash.value = it.data?.id()?.toString() ?: treeOid2Str
+                }
+            }
+        }catch (e: Exception) {
+            MyLog.d(TAG, "resolve tree1 and tree2 full hash failed: treeOid1Str=$treeOid1Str, treeOid2Str=$treeOid2Str, err=${e.stackTraceToString()}")
+        }
 
         //初次进页面，滚动到目标条目，例如：点击了文件a进入的diff页面，则滚动到文件a那里
         val firstLoad = firstTimeLoad.value
@@ -2408,6 +2443,7 @@ fun DiffScreen(
                             }else { // tree to tree, no local(worktree)
                                 val tree1 = Libgit2Helper.resolveTree(repo, treeOid1Str)
                                 val tree2 = Libgit2Helper.resolveTree(repo, treeOid2Str)
+
                                 Libgit2Helper.getSingleDiffItem(
                                     repo,
                                     relativePath,
