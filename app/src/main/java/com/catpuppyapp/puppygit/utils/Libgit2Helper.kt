@@ -30,6 +30,7 @@ import com.catpuppyapp.puppygit.git.IgnoreItem
 import com.catpuppyapp.puppygit.git.PatchFile
 import com.catpuppyapp.puppygit.git.PuppyHunkAndLines
 import com.catpuppyapp.puppygit.git.PuppyLine
+import com.catpuppyapp.puppygit.git.PuppyLineOriginType
 import com.catpuppyapp.puppygit.git.PushFailedItem
 import com.catpuppyapp.puppygit.git.ReflogEntryDto
 import com.catpuppyapp.puppygit.git.RemoteAndCredentials
@@ -67,7 +68,6 @@ import com.github.git24j.core.Diff.Line
 import com.github.git24j.core.FetchOptions
 import com.github.git24j.core.GitObject
 import com.github.git24j.core.Graph
-import com.github.git24j.core.IBitEnum
 import com.github.git24j.core.Index
 import com.github.git24j.core.Merge
 import com.github.git24j.core.Oid
@@ -1790,7 +1790,8 @@ object Libgit2Helper {
 
 
                 //20240618新增：实现增量diff相关代码
-                hunkAndLines.addLine(pLine)
+                //20250608更新：优化添加和删除行的默认匹配策略，不再简单根据行号匹配
+                hunkAndLines.addLine(pLine, diffItem.changeType)
             }
         }
 
@@ -1912,20 +1913,20 @@ object Libgit2Helper {
 
 
     fun getMatchedTextBgColorForDiff(inDarkTheme:Boolean = Theme.inDarkTheme, line: PuppyLine):Color {
-        if(line.originType == Diff.Line.OriginType.ADDITION.toString()) {  //添加行
+        if(line.originType == PuppyLineOriginType.ADDITION) {  //添加行
             return if(inDarkTheme) MyStyleKt.TextColor.hasMatchedAddedLineBgColorForDiffInDarkTheme else MyStyleKt.TextColor.hasMatchedAddedLineBgColorForDiffInLightTheme
-        }else if(line.originType == Diff.Line.OriginType.DELETION.toString()) {  //删除行
+        }else if(line.originType == PuppyLineOriginType.DELETION) {  //删除行
             return if(inDarkTheme) MyStyleKt.TextColor.hasMatchedDeletedLineBgColorForDiffInDarkTheme else MyStyleKt.TextColor.hasMatchedDeletedLineBgColorForDiffInLightTheme
-        }else if(line.originType == Diff.Line.OriginType.HUNK_HDR.toString()) {  //hunk header
+        }else if(line.originType == PuppyLineOriginType.HUNK_HDR) {  //hunk header
             // 注：后来hunk header并没用这的颜色
             return Color.Gray
-        }else if(line.originType == Diff.Line.OriginType.CONTEXT.toString()) {  //上下文
+        }else if(line.originType == PuppyLineOriginType.CONTEXT) {  //上下文
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.CONTEXT_EOFNL.toString()) {  //新旧文件都没末尾行
+        }else if(line.originType == PuppyLineOriginType.CONTEXT_EOFNL) {  //新旧文件都没末尾行
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.ADD_EOFNL.toString()) {  //添加了末尾行
+        }else if(line.originType == PuppyLineOriginType.ADD_EOFNL) {  //添加了末尾行
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.DEL_EOFNL.toString()) {  //删除了末尾行
+        }else if(line.originType == PuppyLineOriginType.DEL_EOFNL) {  //删除了末尾行
             return Color.Unspecified
         }else {  // unknown
             return Color.Unspecified
@@ -1933,20 +1934,20 @@ object Libgit2Helper {
     }
 
     fun getDiffLineBgColor(line:PuppyLine, inDarkTheme: Boolean):Color{
-        if(line.originType == Diff.Line.OriginType.ADDITION.toString()) {  //添加行
+        if(line.originType == PuppyLineOriginType.ADDITION) {  //添加行
             return if(inDarkTheme) MyStyleKt.TextColor.addedLineBgColorForDiffInDarkTheme else MyStyleKt.TextColor.addedLineBgColorForDiffInLightTheme
-        }else if(line.originType == Diff.Line.OriginType.DELETION.toString()) {  //删除行
+        }else if(line.originType == PuppyLineOriginType.DELETION) {  //删除行
             return if(inDarkTheme) MyStyleKt.TextColor.deletedLineBgColorForDiffInDarkTheme else MyStyleKt.TextColor.deletedLineBgColorForDiffInLightTheme
-        }else if(line.originType == Diff.Line.OriginType.HUNK_HDR.toString()) {  //hunk header
+        }else if(line.originType == PuppyLineOriginType.HUNK_HDR) {  //hunk header
             // 注：后来hunk header并没用这的颜色
             return Color.Gray
-        }else if(line.originType == Diff.Line.OriginType.CONTEXT.toString()) {  //上下文
+        }else if(line.originType == PuppyLineOriginType.CONTEXT) {  //上下文
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.CONTEXT_EOFNL.toString()) {  //新旧文件都没末尾行
+        }else if(line.originType == PuppyLineOriginType.CONTEXT_EOFNL) {  //新旧文件都没末尾行
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.ADD_EOFNL.toString()) {  //添加了末尾行
+        }else if(line.originType == PuppyLineOriginType.ADD_EOFNL) {  //添加了末尾行
             return Color.Unspecified
-        }else if(line.originType == Diff.Line.OriginType.DEL_EOFNL.toString()) {  //删除了末尾行
+        }else if(line.originType == PuppyLineOriginType.DEL_EOFNL) {  //删除了末尾行
             return Color.Unspecified
         }else {  // unknown
             return Color.Unspecified
@@ -2421,31 +2422,19 @@ object Libgit2Helper {
         //实际的条目列表，本函数不会再从index查询，如果无条目，可传空列表
         actuallyItemList: List<StatusTypeEntrySaver>,
     ): Ret<String?> {
-        val limitCharsLen = 200;  //提交信息字符数长度限制
-        var count = 0;  //文件记数，用来计算超字符数长度限制后还有几个文件名没追加上
+        val allFilesCount = actuallyItemList.size
 
-
-        //生成提交信息
-        val filesNum = actuallyItemList.size
         // inclue "PuppyGit"
 //            val summary = (if(repoState==Repository.StateT.MERGE) "Conclude Merge" else if(repoState==Repository.StateT.REBASE_MERGE) "Rebase" else if(repoState==Repository.StateT.CHERRYPICK) "Cherrypick" else "Update $filesNum ${if(filesNum>1) "files" else "file"} by PuppyGit") + (":\n")
         // no "PuppyGit"
-        val summary = (if(repoState==Repository.StateT.MERGE) "Conclude Merge" else if(repoState==Repository.StateT.REBASE_MERGE) "Rebase" else if(repoState==Repository.StateT.CHERRYPICK) "Cherrypick" else "Update $filesNum ${if(filesNum>1) "files" else "file"}") + (":\n")
+        val summary = (if(repoState==Repository.StateT.MERGE) "Conclude Merge" else if(repoState==Repository.StateT.REBASE_MERGE) "Rebase" else if(repoState==Repository.StateT.CHERRYPICK) "Cherrypick" else "Update $allFilesCount ${if(allFilesCount>1) "files" else "file"}") + (":\n")
+
         val descriptions=StringBuilder(summary)
-        val split = ", "
-        for(item in actuallyItemList) {  //终止条件为：列表遍历完毕 或者 达到包含文件名的限制数目(上面的limit变量控制)
-            descriptions.append(item.fileName).append(split)
-            ++count;
-            if(descriptions.length > limitCharsLen) {
-                descriptions.append("...omitted ${filesNum - count} file(s)")
-                break
-            }
-//                if(++start > limit) {  //达到包含文件名的限制数目则break(上面的limit变量控制)
-//                    break
-//                }
-        }
-        val commitMsg = descriptions.removeSuffix(split).toString()  //移除最后的 “, ”，如果有的话
-        return Ret.createSuccess(commitMsg)
+
+        // generate file names
+        CommitMsgTemplateUtil.genFileNames(descriptions, actuallyItemList)
+
+        return Ret.createSuccess(descriptions.toString())
     }
 
 //        @Deprecated("限制文件名数量的版本，在20240425弃用了")

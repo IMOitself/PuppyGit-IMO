@@ -11,9 +11,14 @@ import java.util.TreeMap
 
 
 object PuppyLineOriginType{
-    const val ADDED = Diff.Line.OriginType.ADDITION.toString()
-    const val DELETED = Diff.Line.OriginType.DELETION.toString()
+    const val ADDITION = Diff.Line.OriginType.ADDITION.toString()
+    const val DELETION = Diff.Line.OriginType.DELETION.toString()
     const val CONTEXT = Diff.Line.OriginType.CONTEXT.toString()
+    const val HUNK_HDR = Diff.Line.OriginType.HUNK_HDR.toString()
+
+    const val CONTEXT_EOFNL = Diff.Line.OriginType.CONTEXT_EOFNL.toString()
+    const val ADD_EOFNL = Diff.Line.OriginType.ADD_EOFNL.toString()
+    const val DEL_EOFNL = Diff.Line.OriginType.DEL_EOFNL.toString()
 
 }
 
@@ -133,11 +138,14 @@ class PuppyHunkAndLines {
     }
 
 
-    fun addLine(puppyLine: PuppyLine) {
+    /**
+     * @param changeType files change type
+     */
+    fun addLine(puppyLine: PuppyLine, changeType:String) {
         // order is important
         lines.add(puppyLine)
         addLineToGroup(puppyLine)
-                linkCompareTargetForLine(puppyLine)
+        linkCompareTargetForLine(puppyLine, changeType)
     }
 
     fun addLineToGroup(puppyLine: PuppyLine) {
@@ -159,11 +167,12 @@ class PuppyHunkAndLines {
      */
     //20250607 add: for compare line number not equals, but content similar line
     //20250607新增: 实现比较行号不同但内容实际相关的行
-    fun linkCompareTargetForLine(puppyLine: PuppyLine) {
+    @Deprecated("this method has better performance but bad matching, recommend use `linkCompareTargetForLine` to instead of")
+    fun linkCompareTargetForLineByContextOffset(puppyLine: PuppyLine, changeType:String) {
         // deleted line must at added lines up side; context needn't find a compare target;
         //  so, only added line need handle, when find the compare target (related deleted line), update the deleted line as well
         // 删除行和添加行都不需要找比较目标，仅添加行需要找，找到后把对应的删除行也关联上
-        if(puppyLine.originType == PuppyLineOriginType.ADDED) {
+        if(changeType == Cons.gitStatusModified && puppyLine.originType == PuppyLineOriginType.ADDITION) {
             var foundDel = false
             var size = lines.size
             while (--size >= 0) {
@@ -171,7 +180,7 @@ class PuppyHunkAndLines {
                 if(ppLine.originType == PuppyLineOriginType.CONTEXT) {
                     if(foundDel) {
                         val guessedRelatedLineNum = ppLine.oldLineNum - ppLine.newLineNum + puppyLine.newLineNum
-                        val guessedLine = groupedLines.get(guessedRelatedLineNum)?.get(PuppyLineOriginType.DELETED)
+                        val guessedLine = groupedLines.get(guessedRelatedLineNum)?.get(PuppyLineOriginType.DELETION)
                         if(guessedLine != null && guessedLine.compareTargetLineKey.isBlank()) {
                             guessedLine.compareTargetLineKey = puppyLine.key
                             puppyLine.compareTargetLineKey = guessedLine.key
@@ -180,8 +189,27 @@ class PuppyHunkAndLines {
 
                     // if found context, it's finished, this line if has a matched deleted line, already handle at upside, else, none matched with it
                     break
-                }else if(ppLine.originType == PuppyLineOriginType.DELETED) {
+                }else if(ppLine.originType == PuppyLineOriginType.DELETION) {
                     foundDel = true
+                }
+            }
+        }
+
+        keyAndLineMap.put(puppyLine.key, puppyLine)
+    }
+
+    fun linkCompareTargetForLine(puppyLine: PuppyLine, changeType:String) {
+        // deleted line must at added lines up side; context needn't find a compare target;
+        //  so, only added line need handle, when find the compare target (related deleted line), update the deleted line as well
+        // 删除行和添加行都不需要找比较目标，仅添加行需要找，找到后把对应的删除行也关联上
+        if(changeType == Cons.gitStatusModified && puppyLine.originType == PuppyLineOriginType.ADDITION) {
+            for(line in lines) {
+                if(line.originType == PuppyLineOriginType.DELETION && line.compareTargetLineKey.isBlank()) {
+                    if(CmpUtil.roughlyMatch(puppyLine.getContentNoLineBreak(), line.getContentNoLineBreak())) {
+                        line.compareTargetLineKey = puppyLine.key
+                        puppyLine.compareTargetLineKey = line.key
+                        break
+                    }
                 }
             }
         }
@@ -198,8 +226,8 @@ class PuppyHunkAndLines {
      */
     fun needShowAddOrDelLineAsContext(lineNum: Int):MergeAddDelLineResult {
         val groupedLine = groupedLines.get(lineNum)
-        val add = groupedLine?.get(PuppyLineOriginType.ADDED)
-        val del = groupedLine?.get(PuppyLineOriginType.DELETED)
+        val add = groupedLine?.get(PuppyLineOriginType.ADDITION)
+        val del = groupedLine?.get(PuppyLineOriginType.DELETION)
         if(add!=null && del!=null && add.getContentNoLineBreak().equals(del.getContentNoLineBreak())) {
             val alreadyShowed = mergedAddDelLine.add(lineNum).not()
 
@@ -234,11 +262,17 @@ class PuppyHunkAndLines {
         }
 
         // r is null, try generate
-        val line = keyAndLineMap.get(line.key) ?: return null
+//        val line = keyAndLineMap.get(line.key) ?: return null
+
+        // invalid key
+        if(line.compareTargetLineKey.isBlank()) {
+            return null
+        }
+
         val cmpTarget = keyAndLineMap.get(line.compareTargetLineKey) ?: return null
 
-        val add = if(line.originType == PuppyLineOriginType.ADDED) line else cmpTarget
-        val del = if(line.originType == PuppyLineOriginType.ADDED) cmpTarget else line
+        val add = if(line.originType == PuppyLineOriginType.ADDITION) line else cmpTarget
+        val del = if(line.originType == PuppyLineOriginType.ADDITION) cmpTarget else line
 
         val modifyResult2 = CmpUtil.compare(
             add = StringCompareParam(add.content, add.content.length),

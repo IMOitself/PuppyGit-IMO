@@ -692,15 +692,36 @@ fun FilesInnerPage(
     val details_FilesCount = rememberSaveable{mutableIntStateOf(0)}  // files count in selected items. not recursive count
     val details_FoldersCount = rememberSaveable{mutableIntStateOf(0)}  // folders count in selected items. not recursive count
     val details_CountingItemsSize = rememberSaveable { mutableStateOf(false)}  // indicate is calculating file size or finished
-    val showCurPathDirAndFolderCount = rememberSaveable { mutableStateOf(false)}
     val details_itemList = mutableCustomStateListOf(stateKeyTag, "details_itemList", listOf<FileItemDto>())
 
     val initDetailsDialog = {list:List<FileItemDto> ->
+        val list = if(list.size == 1 && list.first().isDir) {
+            // count folder and files if only show details for 1 item
+            try {
+                var filesCount = 0
+                var folderCount = 0
+                val first = list.first()
+
+                first.toFile().listFiles()!!.forEach {
+                    if(it.isDirectory) {
+                        folderCount++
+                    }else {
+                        filesCount++
+                    }
+                }
+
+                listOf(first.copy(folderCount = folderCount, fileCount = filesCount))
+            }catch (_:Exception) {
+                list
+            }
+        }else {
+            list
+        }
+
         details_FoldersCount.intValue = list.count { it.isDir }
         details_FilesCount.intValue = list.size - details_FoldersCount.intValue
         details_AllCount.intValue = list.size
 
-        showCurPathDirAndFolderCount.value = (list.size == 1 && list.first().fullPath == currentPath())
 
         //count files/folders size
         doJobThenOffLoading {
@@ -721,6 +742,7 @@ fun FilesInnerPage(
             //done
             details_CountingItemsSize.value = false
         }
+
 
 
         details_itemList.value.clear()
@@ -2341,15 +2363,10 @@ fun FilesInnerPage(
                                 Text(text = stringResource(R.string.name)+": "+item.name)
                             }
 
-                            if(showCurPathDirAndFolderCount.value) {
+                            if(item.isDir) {
                                 Spacer(modifier = Modifier.height(15.dp))
                                 Row {
-                                    Text(text = stringResource(R.string.folder)+": "+item.folderCount)
-                                }
-
-                                Spacer(modifier = Modifier.height(15.dp))
-                                Row {
-                                    Text(text = stringResource(R.string.file)+": "+item.fileCount)
+                                    Text(text = replaceStringResList(stringResource(R.string.item_count_n), listOf(replaceStringResList(stringResource(R.string.folder_n_file_m), listOf(""+item.folderCount, ""+item.fileCount)))))
                                 }
                             }
 
